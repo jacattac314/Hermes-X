@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Hermes with OpenAI Fallback - HUD & Client</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">H</div>
+      <div>
+        <h1 class="brand-title">Local Hermes</h1>
+        <p class="brand-subtitle">with OpenAI fallback routing</p>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <!-- Simulation vs Live Toggle -->
+      <div class="mode-selector" id="mode-selector">
+        <button class="mode-btn active" id="btn-simulation" title="Run locally in a rich sandbox environment">Simulation Mode</button>
+        <button class="mode-btn" id="btn-live" title="Connect directly to your local Ollama & live OpenAI accounts">Live Connection</button>
+      </div>
+
+      <!-- Settings Dialog Button -->
+      <button class="icon-btn" id="btn-settings" title="Configure endpoints, API keys, and models">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- Main HUD and Analytics Panel -->
+  <main>
+    <!-- Top HUD stats metrics bar -->
+    <section class="hud-bar">
+      <!-- Local Model HUD -->
+      <div class="hud-card glass-panel local" id="hud-local">
+        <div class="hud-icon">💻</div>
+        <div class="hud-info">
+          <span class="hud-label">Local Hermes</span>
+          <span class="hud-value" id="val-local-name">hermes3</span>
+          <span class="hud-badge online" id="badge-local-status">Online (0ms)</span>
+        </div>
+      </div>
+
+      <!-- OpenAI Fallback HUD -->
+      <div class="hud-card glass-panel openai" id="hud-openai">
+        <div class="hud-icon">⚡</div>
+        <div class="hud-info">
+          <span class="hud-label">OpenAI Fallback</span>
+          <span class="hud-value" id="val-openai-name">gpt-4o-mini</span>
+          <span class="hud-badge online" id="badge-openai-status">Standby</span>
+        </div>
+      </div>
+
+      <!-- Financial Savings HUD -->
+      <div class="hud-card glass-panel savings" id="hud-savings">
+        <div class="hud-icon">💵</div>
+        <div class="hud-info">
+          <span class="hud-label">Net Cost Savings</span>
+          <span class="hud-value" id="val-savings">$0.00</span>
+          <span class="hud-badge online" id="badge-savings">100% Saved</span>
+        </div>
+      </div>
+
+      <!-- Request Router Ratio HUD -->
+      <div class="hud-card glass-panel ratio" id="hud-ratio">
+        <div class="hud-icon">📊</div>
+        <div class="hud-info">
+          <span class="hud-label">Fallback Rate</span>
+          <span class="hud-value" id="val-fallback-rate">0%</span>
+          <span class="hud-badge online" id="badge-ratio-detail">0 / 0 routed</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mid-Section Grid Layout: Chat Left, Controls/Analytics Right -->
+    <section class="app-content">
+      
+      <!-- Left Panel: Sleek Chat Client -->
+      <div class="chat-panel glass-panel">
+        <div class="chat-header">
+          <div class="chat-title">
+            <span class="chat-title-dot" id="chat-status-indicator"></span>
+            <span class="font-outfit" id="chat-status-text">Connected to Local Model</span>
+          </div>
+          <button class="chat-clear-btn" id="btn-clear-chat" title="Clear message history">
+            🗑️ Clear History
+          </button>
+        </div>
+
+        <!-- Scrollable Messages Container -->
+        <div class="chat-history" id="chat-history">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- Chat Input Form -->
+        <form class="chat-input-area" id="chat-form">
+          <div class="input-container">
+            <input type="text" class="chat-input" id="chat-input" placeholder="Type a message to test routing..." autocomplete="off" required>
+            <button type="submit" class="send-btn" id="btn-send">
+              ➔
+            </button>
+          </div>
+          <div class="input-footer">
+            <span id="input-helper-text">Primary: hermes3 (Local) | Failover: GPT-4o-mini</span>
+            <span id="input-char-counter">0 chars</span>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right Panel: Simulator Control Panel & Performance Charts -->
+      <div class="analytics-panel">
+        
+        <!-- Failover Simulation Controls -->
+        <div class="simulator-card glass-panel">
+          <h2 class="sim-section-title">⚠️ Failover Simulator Controls</h2>
+          
+          <div class="sim-grid">
+            <!-- Offline switch -->
+            <div class="sim-switch-box">
+              <div class="sim-switch-header">
+                <span class="sim-switch-label">Simulate Offline</span>
+                <label class="switch switch-local">
+                  <input type="checkbox" id="sim-offline">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <p class="sim-switch-desc">Cuts Ollama connections. Triggers immediate fallback to OpenAI.</p>
+            </div>
+
+            <!-- Validation/Syntax failure switch -->
+            <div class="sim-switch-box">
+              <div class="sim-switch-header">
+                <span class="sim-switch-label">Invalid Output format</span>
+                <label class="switch">
+                  <input type="checkbox" id="sim-format-error">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <p class="sim-switch-desc">Simulates structural syntax failures in JSON outputs, forcing retry via OpenAI.</p>
+            </div>
+
+            <!-- Latency adjuster slider -->
+            <div class="sim-switch-box" style="grid-column: span 2;">
+              <div class="sim-switch-header">
+                <span class="sim-switch-label">Inject Local Latency Spike</span>
+                <span class="slider-val" id="val-sim-latency">0 ms</span>
+              </div>
+              <div class="slider-container">
+                <input type="range" class="range-slider" id="sim-latency" min="0" max="10000" step="500" value="0">
+                <p class="sim-switch-desc">Injects Artificial Local delay. Delays above the timeout threshold (e.g. 5s) will trigger an automatic OpenAI fallback.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Performance Analytics & Charts -->
+        <div class="charts-card glass-panel">
+          <h2 class="sim-section-title">📈 Real-Time Performance Analytics</h2>
+          
+          <!-- Latency chart -->
+          <div class="legend-container">
+            <span class="hud-label">Response Latency History</span>
+            <div class="chart-legend">
+              <div class="legend-item">
+                <span class="legend-color local"></span>
+                <span>Local (ms)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color openai"></span>
+                <span>OpenAI Fallback (ms)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <!-- Dynamic SVG line graph -->
+            <svg class="latency-chart" id="latency-svg" viewBox="0 0 400 160">
+              <!-- Grid lines -->
+              <line x1="40" y1="20" x2="390" y2="20" class="chart-grid-line" />
+              <line x1="40" y1="60" x2="390" y2="60" class="chart-grid-line" />
+              <line x1="40" y1="100" x2="390" y2="100" class="chart-grid-line" />
+              <line x1="40" y1="140" x2="390" y2="140" class="chart-grid-line" />
+              
+              <!-- Y Axis labels -->
+              <text x="10" y="23" class="chart-axis-text">10s</text>
+              <text x="10" y="63" class="chart-axis-text">5s</text>
+              <text x="10" y="103" class="chart-axis-text">2s</text>
+              <text x="10" y="143" class="chart-axis-text">0s</text>
+              
+              <!-- Placeholder message when no entries exist -->
+              <text x="215" y="85" id="svg-placeholder" fill="var(--text-muted)" font-size="11" text-anchor="middle">No latency metrics logged yet.</text>
+
+              <!-- Paths populated dynamically via JS -->
+              <path class="chart-line-local" id="path-local" d="" />
+              <path class="chart-line-openai" id="path-openai" d="" />
+            </svg>
+          </div>
+
+          <!-- Cost efficiency stats panel -->
+          <div class="savings-chart-wrapper">
+            <span class="hud-label" style="margin-bottom: 8px; display: block;">Cost Efficiency Dashboard</span>
+            
+            <!-- Dual Model Hybrid cost bar -->
+            <div class="bar-chart-row">
+              <span class="bar-label">Hybrid Router</span>
+              <div class="bar-track">
+                <div class="bar-fill local" id="bar-hybrid-cost" style="width: 0%;"></div>
+              </div>
+              <span class="bar-val" id="val-hybrid-cost">$0.00</span>
+            </div>
+
+            <!-- Pure OpenAI cost bar -->
+            <div class="bar-chart-row">
+              <span class="bar-label">OpenAI Only</span>
+              <div class="bar-track">
+                <div class="bar-fill openai" id="bar-openai-cost" style="width: 0%;"></div>
+              </div>
+              <span class="bar-val" id="val-openai-cost">$0.00</span>
+            </div>
+
+            <!-- Savings bar -->
+            <div class="bar-chart-row">
+              <span class="bar-label">Total Saved</span>
+              <div class="bar-track">
+                <div class="bar-fill savings" id="bar-savings-cost" style="width: 0%;"></div>
+              </div>
+              <span class="bar-val" id="val-savings-percent">100%</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Interactive Configuration Modal Dialog -->
+  <div class="modal-overlay" id="settings-modal-overlay">
+    <div class="settings-modal glass-panel">
+      <div class="modal-header">
+        <h2 class="modal-title font-outfit">⚙️ Endpoint Configurations</h2>
+        <button class="modal-close" id="btn-close-settings">×</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- OpenAI API Key -->
+        <div class="form-group">
+          <label class="form-label" for="settings-openai-key">OpenAI API Key</label>
+          <input type="password" class="form-input" id="settings-openai-key" placeholder="sk-proj-..." autocomplete="off">
+          <p class="sim-switch-desc" style="margin-top: 2px;">Saved securely to localStorage. Never leaves your browser.</p>
+        </div>
+
+        <!-- Ollama Endpoint URL -->
+        <div class="form-group">
+          <label class="form-label" for="settings-local-url">Local API Endpoint URL</label>
+          <input type="url" class="form-input" id="settings-local-url" placeholder="http://localhost:11434/v1">
+          <p class="sim-switch-desc" style="margin-top: 2px;">Default Ollama path. Set OLLAMA_ORIGINS="*" before serving.</p>
+        </div>
+
+        <!-- Local Model identifier -->
+        <div class="form-group">
+          <label class="form-label" for="settings-local-model">Local Model Identifier</label>
+          <input type="text" class="form-input" id="settings-local-model" placeholder="hermes3">
+        </div>
+
+        <!-- OpenAI Model identifier -->
+        <div class="form-group">
+          <label class="form-label" for="settings-openai-model">OpenAI Model Identifier</label>
+          <select class="form-input" id="settings-openai-model">
+            <option value="gpt-4o-mini">gpt-4o-mini (Cost-effective - Default)</option>
+            <option value="gpt-4o">gpt-4o (Premium reasoning)</option>
+            <option value="o1-mini">o1-mini (Advanced structured logic)</option>
+          </select>
+        </div>
+
+        <!-- Timeout limits slider -->
+        <div class="form-group">
+          <label class="form-label" for="settings-timeout">Local Timeout Threshold (seconds)</label>
+          <input type="number" class="form-input" id="settings-timeout" min="1" max="60" value="5">
+          <p class="sim-switch-desc" style="margin-top: 2px;">If local requests take longer than this, failover triggers immediately.</p>
+        </div>
+
+        <!-- Live CORS instructions alert -->
+        <div class="custom-alert info">
+          <span class="custom-alert-icon">💡</span>
+          <div>
+            <strong>Ollama CORS configuration:</strong> Ensure you launch Ollama via your terminal with CORS enabled: <code>OLLAMA_ORIGINS="*" ollama serve</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-settings">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-settings">Save Configurations</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
