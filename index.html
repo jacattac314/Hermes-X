@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Local Hermes with OpenAI Fallback - HUD & Client</title>
+  <title>Hermes Local Router (Ollama + Qwen3) - HUD & Client</title>
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -11,10 +11,10 @@
   <!-- Top Navigation Header -->
   <header>
     <div class="brand">
-      <div class="brand-icon">H</div>
+      <div class="brand-icon" style="background: linear-gradient(135deg, var(--color-warning), var(--color-local)); font-family: 'Outfit', sans-serif;">H</div>
       <div>
-        <h1 class="brand-title">Local Hermes</h1>
-        <p class="brand-subtitle">with OpenAI fallback routing</p>
+        <h1 class="brand-title">Hermes Router</h1>
+        <p class="brand-subtitle">Ollama Qwen3 & OpenAI fallback</p>
       </div>
     </div>
 
@@ -40,8 +40,8 @@
       <div class="hud-card glass-panel local" id="hud-local">
         <div class="hud-icon">💻</div>
         <div class="hud-info">
-          <span class="hud-label">Local Hermes</span>
-          <span class="hud-value" id="val-local-name">hermes3</span>
+          <span class="hud-label">Local Model (Ollama)</span>
+          <span class="hud-value" id="val-local-name">qwen3:32b</span>
           <span class="hud-badge online" id="badge-local-status">Online (0ms)</span>
         </div>
       </div>
@@ -112,126 +112,380 @@
         </form>
       </div>
 
-      <!-- Right Panel: Simulator Control Panel & Performance Charts -->
-      <div class="analytics-panel">
+      <!-- Right Panel: Tabs Navigation, Simulator, Performance & Setup Guide -->
+      <div class="analytics-panel-container">
         
-        <!-- Failover Simulation Controls -->
-        <div class="simulator-card glass-panel">
-          <h2 class="sim-section-title">⚠️ Failover Simulator Controls</h2>
-          
-          <div class="sim-grid">
-            <!-- Offline switch -->
-            <div class="sim-switch-box">
-              <div class="sim-switch-header">
-                <span class="sim-switch-label">Simulate Offline</span>
-                <label class="switch switch-local">
-                  <input type="checkbox" id="sim-offline">
-                  <span class="slider"></span>
-                </label>
-              </div>
-              <p class="sim-switch-desc">Cuts Ollama connections. Triggers immediate fallback to OpenAI.</p>
-            </div>
-
-            <!-- Validation/Syntax failure switch -->
-            <div class="sim-switch-box">
-              <div class="sim-switch-header">
-                <span class="sim-switch-label">Invalid Output format</span>
-                <label class="switch">
-                  <input type="checkbox" id="sim-format-error">
-                  <span class="slider"></span>
-                </label>
-              </div>
-              <p class="sim-switch-desc">Simulates structural syntax failures in JSON outputs, forcing retry via OpenAI.</p>
-            </div>
-
-            <!-- Latency adjuster slider -->
-            <div class="sim-switch-box" style="grid-column: span 2;">
-              <div class="sim-switch-header">
-                <span class="sim-switch-label">Inject Local Latency Spike</span>
-                <span class="slider-val" id="val-sim-latency">0 ms</span>
-              </div>
-              <div class="slider-container">
-                <input type="range" class="range-slider" id="sim-latency" min="0" max="10000" step="500" value="0">
-                <p class="sim-switch-desc">Injects Artificial Local delay. Delays above the timeout threshold (e.g. 5s) will trigger an automatic OpenAI fallback.</p>
-              </div>
-            </div>
-          </div>
+        <!-- Premium glassmorphic tab bar -->
+        <div class="analytics-tabs">
+          <button class="tab-btn active" id="btn-tab-analytics" title="Review performance logs and simulation settings">📈 Analytics & Simulation</button>
+          <button class="tab-btn" id="btn-tab-setup" title="Access local-only installation steps and topology guides">🛠️ Hermes & Ollama Setup</button>
         </div>
 
-        <!-- Performance Analytics & Charts -->
-        <div class="charts-card glass-panel">
-          <h2 class="sim-section-title">📈 Real-Time Performance Analytics</h2>
+        <!-- Tab Content 1: Analytics & Simulation -->
+        <div class="tab-content active" id="content-analytics">
           
-          <!-- Latency chart -->
-          <div class="legend-container">
-            <span class="hud-label">Response Latency History</span>
-            <div class="chart-legend">
-              <div class="legend-item">
-                <span class="legend-color local"></span>
-                <span>Local (ms)</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color openai"></span>
-                <span>OpenAI Fallback (ms)</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="chart-container">
-            <!-- Dynamic SVG line graph -->
-            <svg class="latency-chart" id="latency-svg" viewBox="0 0 400 160">
-              <!-- Grid lines -->
-              <line x1="40" y1="20" x2="390" y2="20" class="chart-grid-line" />
-              <line x1="40" y1="60" x2="390" y2="60" class="chart-grid-line" />
-              <line x1="40" y1="100" x2="390" y2="100" class="chart-grid-line" />
-              <line x1="40" y1="140" x2="390" y2="140" class="chart-grid-line" />
-              
-              <!-- Y Axis labels -->
-              <text x="10" y="23" class="chart-axis-text">10s</text>
-              <text x="10" y="63" class="chart-axis-text">5s</text>
-              <text x="10" y="103" class="chart-axis-text">2s</text>
-              <text x="10" y="143" class="chart-axis-text">0s</text>
-              
-              <!-- Placeholder message when no entries exist -->
-              <text x="215" y="85" id="svg-placeholder" fill="var(--text-muted)" font-size="11" text-anchor="middle">No latency metrics logged yet.</text>
-
-              <!-- Paths populated dynamically via JS -->
-              <path class="chart-line-local" id="path-local" d="" />
-              <path class="chart-line-openai" id="path-openai" d="" />
-            </svg>
-          </div>
-
-          <!-- Cost efficiency stats panel -->
-          <div class="savings-chart-wrapper">
-            <span class="hud-label" style="margin-bottom: 8px; display: block;">Cost Efficiency Dashboard</span>
+          <!-- Failover Simulation Controls -->
+          <div class="simulator-card glass-panel">
+            <h2 class="sim-section-title">⚠️ Failover Simulator Controls</h2>
             
-            <!-- Dual Model Hybrid cost bar -->
-            <div class="bar-chart-row">
-              <span class="bar-label">Hybrid Router</span>
-              <div class="bar-track">
-                <div class="bar-fill local" id="bar-hybrid-cost" style="width: 0%;"></div>
+            <div class="sim-grid">
+              <!-- Offline switch -->
+              <div class="sim-switch-box">
+                <div class="sim-switch-header">
+                  <span class="sim-switch-label">Simulate Offline</span>
+                  <label class="switch switch-local">
+                    <input type="checkbox" id="sim-offline">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <p class="sim-switch-desc">Cuts Ollama local connection. Triggers immediate fallback to OpenAI.</p>
               </div>
-              <span class="bar-val" id="val-hybrid-cost">$0.00</span>
-            </div>
 
-            <!-- Pure OpenAI cost bar -->
-            <div class="bar-chart-row">
-              <span class="bar-label">OpenAI Only</span>
-              <div class="bar-track">
-                <div class="bar-fill openai" id="bar-openai-cost" style="width: 0%;"></div>
+              <!-- Validation/Syntax failure switch -->
+              <div class="sim-switch-box">
+                <div class="sim-switch-header">
+                  <span class="sim-switch-label">Invalid Output format</span>
+                  <label class="switch">
+                    <input type="checkbox" id="sim-format-error">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <p class="sim-switch-desc">Simulates structural syntax failures in JSON outputs, forcing retry via OpenAI.</p>
               </div>
-              <span class="bar-val" id="val-openai-cost">$0.00</span>
-            </div>
 
-            <!-- Savings bar -->
-            <div class="bar-chart-row">
-              <span class="bar-label">Total Saved</span>
-              <div class="bar-track">
-                <div class="bar-fill savings" id="bar-savings-cost" style="width: 0%;"></div>
+              <!-- Latency adjuster slider -->
+              <div class="sim-switch-box" style="grid-column: span 2;">
+                <div class="sim-switch-header">
+                  <span class="sim-switch-label">Inject Local Latency Spike</span>
+                  <span class="slider-val" id="val-sim-latency">0 ms</span>
+                </div>
+                <div class="slider-container">
+                  <input type="range" class="range-slider" id="sim-latency" min="0" max="10000" step="500" value="0">
+                  <p class="sim-switch-desc">Injects Artificial Local delay. Delays above the timeout threshold (e.g. 5s) will trigger an automatic OpenAI fallback.</p>
+                </div>
               </div>
-              <span class="bar-val" id="val-savings-percent">100%</span>
             </div>
           </div>
+
+          <!-- Performance Analytics & Charts -->
+          <div class="charts-card glass-panel">
+            <h2 class="sim-section-title">📈 Real-Time Performance Analytics</h2>
+            
+            <!-- Latency chart -->
+            <div class="legend-container">
+              <span class="hud-label">Response Latency History</span>
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <span class="legend-color local"></span>
+                  <span>Local (ms)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color openai"></span>
+                  <span>OpenAI Fallback (ms)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-container">
+              <!-- Dynamic SVG line graph -->
+              <svg class="latency-chart" id="latency-svg" viewBox="0 0 400 160">
+                <!-- Grid lines -->
+                <line x1="40" y1="20" x2="390" y2="20" class="chart-grid-line" />
+                <line x1="40" y1="60" x2="390" y2="60" class="chart-grid-line" />
+                <line x1="40" y1="100" x2="390" y2="100" class="chart-grid-line" />
+                <line x1="40" y1="140" x2="390" y2="140" class="chart-grid-line" />
+                
+                <!-- Y Axis labels -->
+                <text x="10" y="23" class="chart-axis-text">10s</text>
+                <text x="10" y="63" class="chart-axis-text">5s</text>
+                <text x="10" y="103" class="chart-axis-text">2s</text>
+                <text x="10" y="143" class="chart-axis-text">0s</text>
+                
+                <!-- Placeholder message when no entries exist -->
+                <text x="215" y="85" id="svg-placeholder" fill="var(--text-muted)" font-size="11" text-anchor="middle">No latency metrics logged yet.</text>
+
+                <!-- Paths populated dynamically via JS -->
+                <path class="chart-line-local" id="path-local" d="" />
+                <path class="chart-line-openai" id="path-openai" d="" />
+              </svg>
+            </div>
+
+            <!-- Cost efficiency stats panel -->
+            <div class="savings-chart-wrapper">
+              <span class="hud-label" style="margin-bottom: 8px; display: block;">Cost Efficiency Dashboard</span>
+              
+              <!-- Dual Model Hybrid cost bar -->
+              <div class="bar-chart-row">
+                <span class="bar-label">Hybrid Router</span>
+                <div class="bar-track">
+                  <div class="bar-fill local" id="bar-hybrid-cost" style="width: 0%;"></div>
+                </div>
+                <span class="bar-val" id="val-hybrid-cost">$0.00</span>
+              </div>
+
+              <!-- Pure OpenAI cost bar -->
+              <div class="bar-chart-row">
+                <span class="bar-label">OpenAI Only</span>
+                <div class="bar-track">
+                  <div class="bar-fill openai" id="bar-openai-cost" style="width: 0%;"></div>
+                </div>
+                <span class="bar-val" id="val-openai-cost">$0.00</span>
+              </div>
+
+              <!-- Savings bar -->
+              <div class="bar-chart-row">
+                <span class="bar-label">Total Saved</span>
+                <div class="bar-track">
+                  <div class="bar-fill savings" id="bar-savings-cost" style="width: 0%;"></div>
+                </div>
+                <span class="bar-val" id="val-savings-percent">100%</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Tab Content 2: Setup Guide -->
+        <div class="tab-content" id="content-setup">
+          
+          <!-- Recommended Stack & Future Scale Graphical Tree -->
+          <div class="arch-container glass-panel">
+            <h2 class="sim-section-title" style="border: none; margin-bottom: 0.25rem;">🌲 Local Deployment Topology</h2>
+            <div class="arch-tree">
+<span class="arch-node-active">Hermes Agent</span>
+└── <span class="arch-node-active">Ollama</span>
+    └── <span class="arch-node-active">qwen3:32b</span> <span class="terminal-comment">(Highly recommended local worker)</span>
+            </div>
+            
+            <p class="sim-switch-desc" style="margin-top: 6px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+              <strong>Future Production Scale Topology:</strong>
+            </p>
+            <div class="arch-tree" style="opacity: 0.85;">
+<span class="arch-node-active">Hermes Agent</span>
+├── <span class="arch-node-active">Ollama / Qwen local worker</span> <span class="terminal-comment">(Direct local inference)</span>
+├── <span class="arch-node-accent">Claude Code</span> <span class="terminal-comment">(Senior code review)</span>
+├── 📓 <span class="arch-node-active">Obsidian memory vault</span> <span class="terminal-comment">(Local context backup)</span>
+└── 💬 <span class="arch-node-accent">Slack gateway</span> <span class="terminal-comment">(Interface hub)</span>
+            </div>
+          </div>
+
+          <!-- Setup Guide Checklist and Details -->
+          <div class="setup-guide-card glass-panel">
+            <h2 class="sim-section-title" style="margin-bottom: 0.5rem;">🛠️ Local-Only Installation Guide</h2>
+            <p class="sim-switch-desc" style="margin-bottom: 0.75rem;">Follow these 6 steps to configure a fully sandboxed, highly-capable local environment on your Mac.</p>
+
+            <div class="setup-steps">
+              
+              <!-- Step 1 -->
+              <div class="setup-step" id="setup-step-1">
+                <div class="step-header">
+                  <div class="step-title-box">
+                    <span class="step-number">1</span>
+                    <span class="step-title">Install Ollama</span>
+                  </div>
+                  <div class="step-checkbox-btn" data-step="1">
+                    <span class="checkbox-icon">⬜</span> Mark Done
+                  </div>
+                </div>
+                <p class="step-desc">Download and install the background daemon to run open-source models locally on macOS.</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - brew</span>
+                    <button class="terminal-btn-copy" data-copy="brew install ollama">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">brew install ollama</span></div>
+                </div>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - serve</span>
+                    <button class="terminal-btn-copy" data-copy="ollama serve">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">ollama serve</span> <span class="terminal-comment"># Starts Ollama in the background</span></div>
+                </div>
+              </div>
+
+              <!-- Step 2 -->
+              <div class="setup-step" id="setup-step-2">
+                <div class="step-header">
+                  <div class="step-title-box">
+                    <span class="step-number">2</span>
+                    <span class="step-title">Pull Qwen Model</span>
+                  </div>
+                  <div class="step-checkbox-btn" data-step="2">
+                    <span class="checkbox-icon">⬜</span> Mark Done
+                  </div>
+                </div>
+                <p class="step-desc">Pull a powerful local reasoning LLM. Use 32b for high quality or 14b if resources are limited.</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - qwen3:32b</span>
+                    <button class="terminal-btn-copy" data-copy="ollama pull qwen3:32b">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">ollama pull qwen3:32b</span> <span class="terminal-comment"># Recommended Model</span></div>
+                </div>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - qwen3:14b</span>
+                    <button class="terminal-btn-copy" data-copy="ollama pull qwen3:14b">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">ollama pull qwen3:14b</span> <span class="terminal-comment"># Lighter Fallback Model</span></div>
+                </div>
+              </div>
+
+              <!-- Step 3 -->
+              <div class="setup-step" id="setup-step-3">
+                <div class="step-header">
+                  <div class="step-title-box">
+                    <span class="step-number">3</span>
+                    <span class="step-title">Install Hermes Agent</span>
+                  </div>
+                  <div class="step-checkbox-btn" data-step="3">
+                    <span class="checkbox-icon">⬜</span> Mark Done
+                  </div>
+                </div>
+                <p class="step-desc">Run the Nous Research Hermes Agent one-line shell installer, reload, and verify the diagnostics.</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - bash install</span>
+                    <button class="terminal-btn-copy" data-copy="curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash</span></div>
+                </div>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - reload & diagnose</span>
+                    <button class="terminal-btn-copy" data-copy="source ~/.zshrc && hermes doctor">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">source ~/.zshrc && hermes doctor</span></div>
+                </div>
+              </div>
+
+              <!-- Step 4 -->
+              <div class="setup-step" id="setup-step-4">
+                <div class="step-header">
+                  <div class="step-title-box">
+                    <span class="step-number">4</span>
+                    <span class="step-title">Configure Hermes model</span>
+                  </div>
+                  <div class="step-checkbox-btn" data-step="4">
+                    <span class="checkbox-icon">⬜</span> Mark Done
+                  </div>
+                </div>
+                <p class="step-desc">Point the Hermes Agent at your local Ollama server node.</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - config model</span>
+                    <button class="terminal-btn-copy" data-copy="hermes model">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">hermes model</span></div>
+                </div>
+                <p class="step-subtext">
+                  Choose the following fields in the prompt:<br>
+                  • <strong>Provider:</strong> <code>Custom / OpenAI-compatible / Ollama</code><br>
+                  • <strong>Base URL:</strong> <code>http://127.0.0.1:11434/v1</code><br>
+                  • <strong>API Key:</strong> <code>ollama</code><br>
+                  • <strong>Model:</strong> <code>qwen3:32b</code> <span class="terminal-comment">(or qwen3:14b)</span>
+                </p>
+              </div>
+
+              <!-- Step 5 -->
+              <div class="setup-step" id="setup-step-5">
+                <div class="step-header">
+                  <div class="step-title-box">
+                    <span class="step-number">5</span>
+                    <span class="step-title">Test Local TUI</span>
+                  </div>
+                  <div class="step-checkbox-btn" data-step="5">
+                    <span class="checkbox-icon">⬜</span> Mark Done
+                  </div>
+                </div>
+                <p class="step-desc">Launch the Hermes terminal user interface and test it with a local prompt.</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - run tui</span>
+                    <button class="terminal-btn-copy" data-copy="hermes --tui">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">hermes --tui</span></div>
+                </div>
+                <div class="terminal-box" style="margin-top: 8px;">
+                  <div class="terminal-header">
+                    <span>Validation Prompt</span>
+                    <button class="terminal-btn-copy" data-copy="You are running locally through Ollama. Tell me what model you are using, then list my current directory. Do not edit files.">Copy Prompt</button>
+                  </div>
+                  <div class="terminal-body" style="white-space: pre-wrap; word-break: break-all; font-style: italic; color: #e0af68;">"You are running locally through Ollama. Tell me what model you are using, then list my current directory. Do not edit files."</div>
+                </div>
+              </div>
+
+              <!-- Step 6 -->
+              <div class="setup-step" id="setup-step-6">
+                <div class="step-header">
+                  <div class="step-title-box">
+                    <span class="step-number">6</span>
+                    <span class="step-title">Launch Local Dashboard</span>
+                  </div>
+                  <div class="step-checkbox-btn" data-step="6">
+                    <span class="checkbox-icon">⬜</span> Mark Done
+                  </div>
+                </div>
+                <p class="step-desc">Recent Hermes releases include a beautiful built-in web gateway interface for managing Hermes locally.</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - gateway</span>
+                    <button class="terminal-btn-copy" data-copy="hermes gateway run">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">hermes gateway run</span></div>
+                </div>
+                <a href="http://localhost:8642" target="_blank" class="link-btn">🌐 Open Local Gateway (localhost:8642)</a>
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
       </div>
@@ -256,15 +510,15 @@
 
         <!-- Ollama Endpoint URL -->
         <div class="form-group">
-          <label class="form-label" for="settings-local-url">Local API Endpoint URL</label>
-          <input type="url" class="form-input" id="settings-local-url" placeholder="http://localhost:11434/v1">
-          <p class="sim-switch-desc" style="margin-top: 2px;">Default Ollama path. Set OLLAMA_ORIGINS="*" before serving.</p>
+          <label class="form-label" for="settings-local-url">Ollama Local API URL</label>
+          <input type="url" class="form-input" id="settings-local-url" placeholder="http://127.0.0.1:11434/v1">
+          <p class="sim-switch-desc" style="margin-top: 2px;">Default Ollama local API path. Ensure Ollama is running (`ollama serve`).</p>
         </div>
 
         <!-- Local Model identifier -->
         <div class="form-group">
-          <label class="form-label" for="settings-local-model">Local Model Identifier</label>
-          <input type="text" class="form-input" id="settings-local-model" placeholder="hermes3">
+          <label class="form-label" for="settings-local-model">Local Model Identifier (Ollama)</label>
+          <input type="text" class="form-input" id="settings-local-model" placeholder="qwen3:32b">
         </div>
 
         <!-- OpenAI Model identifier -->
@@ -288,7 +542,7 @@
         <div class="custom-alert info">
           <span class="custom-alert-icon">💡</span>
           <div>
-            <strong>Ollama CORS configuration:</strong> Ensure you launch Ollama via your terminal with CORS enabled: <code>OLLAMA_ORIGINS="*" ollama serve</code>
+            <strong>Ollama Local Service:</strong> Make sure you have pulled your local model (e.g. <code>ollama pull qwen3:32b</code>) and started the service (<code>ollama serve</code>) for the client connection to succeed.
           </div>
         </div>
       </div>

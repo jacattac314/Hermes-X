@@ -8,11 +8,11 @@ class AppController {
   constructor() {
     // 1. Core Config & Default Parameters
     this.config = {
-      openaiKey: localStorage.getItem('hermes_openai_key') || '',
-      localUrl: localStorage.getItem('hermes_local_url') || 'http://localhost:11434/v1',
-      localModel: localStorage.getItem('hermes_local_model') || 'hermes3',
-      openaiModel: localStorage.getItem('hermes_openai_model') || 'gpt-4o-mini',
-      timeoutSeconds: parseInt(localStorage.getItem('hermes_timeout') || '5', 10)
+      openaiKey: localStorage.getItem('lmlink_openai_key') || '',
+      localUrl: localStorage.getItem('lmlink_local_url') || 'http://127.0.0.1:11434/v1',
+      localModel: localStorage.getItem('lmlink_local_model') || 'qwen3:32b',
+      openaiModel: localStorage.getItem('lmlink_openai_model') || 'gpt-4o-mini',
+      timeoutSeconds: parseInt(localStorage.getItem('lmlink_timeout') || '5', 10)
     };
 
     // 2. Operational state parameters
@@ -38,11 +38,11 @@ class AppController {
     // 3. Pre-canned mock responses database (for high-fidelity simulation)
     this.mockDatabase = {
       greeting: {
-        local: "Hello! I am your **Local Hermes 3** model running privately on your machine. I'm optimized for fast reasoning, standard text processing, and fully offline operation.",
-        openai: "Greetings! I'm your **OpenAI GPT-4o** fallback agent. I've taken over seamlessly since your local model is currently offline or taking too long to reply."
+        local: "Hello! I am **Hermes Agent** (specifically running **Qwen3 (32B)** locally via Ollama). I'm configured to serve your local reasoning tasks and operate fully sandboxed without sending your data to external servers.",
+        openai: "Greetings! I'm your **OpenAI GPT-4o-mini** fallback agent. I've taken over seamlessly since your local Hermes model is currently offline, lagging, or taking too long to reply."
       },
       code: {
-        local: "Here is a quick, secure Python script to process a text file locally. Writing code locally ensures that your proprietary business logic remains fully secure:\n\n```python\ndef analyze_file(filepath):\n    with open(filepath, 'r') as file:\n        lines = file.readlines()\n    return f'Total local lines parsed: {len(lines)}'\n\nprint(analyze_file('confidential_data.csv'))\n```",
+        local: "Here is a quick, secure Python script to process a text file locally using Hermes. Running code locally ensures that your proprietary business logic remains fully secure:\n\n```python\ndef analyze_file(filepath):\n    with open(filepath, 'r') as file:\n        lines = file.readlines()\n    return f'Total local lines parsed: {len(lines)}'\n\nprint(analyze_file('confidential_data.csv'))\n```",
         openai: "Sure! Let me supply an optimized fallback Python implementation. Since your local Hermes service encountered a syntax validation failure, I've re-written the solution:\n\n```python\nimport pandas as pd\n\ndef analyze_file_robust(filepath):\n    # OpenAI Fallback: Adding structured pandas checking\n    df = pd.read_csv(filepath)\n    return f'Dataset rows: {df.shape[0]}, columns: {df.shape[1]}'\n\nprint(analyze_file_robust('confidential_data.csv'))\n```"
       },
       slow: {
@@ -65,6 +65,12 @@ class AppController {
       btnSaveSettings: document.getElementById('btn-save-settings'),
       modalOverlay: document.getElementById('settings-modal-overlay'),
       
+      // Tabs Elements
+      btnTabAnalytics: document.getElementById('btn-tab-analytics'),
+      btnTabSetup: document.getElementById('btn-tab-setup'),
+      contentAnalytics: document.getElementById('content-analytics'),
+      contentSetup: document.getElementById('content-setup'),
+
       // HUD items
       valLocalName: document.getElementById('val-local-name'),
       valOpenaiName: document.getElementById('val-openai-name'),
@@ -122,6 +128,7 @@ class AppController {
     this.registerEventListeners();
     this.loadConfigIntoSettingsModal();
     this.updateHUDDisplay();
+    this.loadChecklistState();
     this.renderInitialMessage();
   }
 
@@ -136,6 +143,30 @@ class AppController {
     this.dom.btnCloseSettings.addEventListener('click', () => this.dom.modalOverlay.classList.remove('active'));
     this.dom.btnCancelSettings.addEventListener('click', () => this.dom.modalOverlay.classList.remove('active'));
     this.dom.btnSaveSettings.addEventListener('click', () => this.saveSettings());
+
+    // Tabs Toggles
+    this.dom.btnTabAnalytics.addEventListener('click', () => this.switchTab('analytics'));
+    this.dom.btnTabSetup.addEventListener('click', () => this.switchTab('setup'));
+
+    // Terminal Copy buttons
+    const copyButtons = document.querySelectorAll('.terminal-btn-copy');
+    copyButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const text = btn.getAttribute('data-copy');
+        if (text) {
+          this.copyToClipboard(text, btn);
+        }
+      });
+    });
+
+    // Checklist checkboxes
+    const checklistBtns = document.querySelectorAll('.step-checkbox-btn');
+    checklistBtns.forEach(btn => {
+      const stepNum = btn.getAttribute('data-step');
+      btn.addEventListener('click', () => {
+        this.toggleChecklistStep(stepNum);
+      });
+    });
 
     // Chat submit & character typing
     this.dom.chatForm.addEventListener('submit', (e) => {
@@ -185,7 +216,7 @@ class AppController {
       this.dom.btnSimulation.classList.remove('active');
       this.dom.btnLive.classList.add('active');
       this.dom.btnLive.blur();
-      this.addSystemNotification("System: Connected to live Ollama & OpenAI fallback endpoints. Confirm your local servers are running.", 'info');
+      this.addSystemNotification("System: Connected to live Ollama & OpenAI fallback endpoints. Confirm Ollama is running (`ollama serve`).", 'info');
       
       // Warn if API Key is not configured
       if (!this.config.openaiKey) {
@@ -207,17 +238,17 @@ class AppController {
   // Save Settings Modal inputs to localStorage
   saveSettings() {
     this.config.openaiKey = this.dom.settingsOpenaiKey.value.trim();
-    this.config.localUrl = this.dom.settingsLocalUrl.value.trim() || 'http://localhost:11434/v1';
-    this.config.localModel = this.dom.settingsLocalModel.value.trim() || 'hermes3';
+    this.config.localUrl = this.dom.settingsLocalUrl.value.trim() || 'http://127.0.0.1:11434/v1';
+    this.config.localModel = this.dom.settingsLocalModel.value.trim() || 'qwen3:32b';
     this.config.openaiModel = this.dom.settingsOpenaiModel.value;
     this.config.timeoutSeconds = parseInt(this.dom.settingsTimeout.value, 10) || 5;
 
     // Persist
-    localStorage.setItem('hermes_openai_key', this.config.openaiKey);
-    localStorage.setItem('hermes_local_url', this.config.localUrl);
-    localStorage.setItem('hermes_local_model', this.config.localModel);
-    localStorage.setItem('hermes_openai_model', this.config.openaiModel);
-    localStorage.setItem('hermes_timeout', this.config.timeoutSeconds.toString());
+    localStorage.setItem('lmlink_openai_key', this.config.openaiKey);
+    localStorage.setItem('lmlink_local_url', this.config.localUrl);
+    localStorage.setItem('lmlink_local_model', this.config.localModel);
+    localStorage.setItem('lmlink_openai_model', this.config.openaiModel);
+    localStorage.setItem('lmlink_timeout', this.config.timeoutSeconds.toString());
 
     this.dom.modalOverlay.classList.remove('active');
     this.addSystemNotification("System Configurations Saved & Reloaded.", 'info');
@@ -253,7 +284,7 @@ class AppController {
         this.dom.badgeLocalStatus.className = "hud-badge online";
         this.dom.chatStatusIndicator.style.background = "var(--color-local)";
         this.dom.chatStatusIndicator.style.boxShadow = "0 0 8px var(--color-local)";
-        this.dom.chatStatusText.textContent = this.isSimulation ? "Simulator Active" : "Connected to Local Ollama";
+        this.dom.chatStatusText.textContent = this.isSimulation ? "Simulator Active" : "Connected to Ollama";
       }
     }
 
@@ -289,14 +320,14 @@ class AppController {
     this.renderCostEfficiencyDashboard();
     
     // Update Input Area Label
-    this.dom.inputHelperText.textContent = `Primary: ${this.config.localModel} (${this.isSimulation ? 'Sim' : 'Local'}) | Failover: ${this.config.openaiModel}`;
+    this.dom.inputHelperText.textContent = `Primary: ${this.config.localModel} (${this.isSimulation ? 'Sim' : 'Ollama'}) | Failover: ${this.config.openaiModel}`;
   }
 
   // Appends initial welcome message to chat
   renderInitialMessage() {
     this.renderMessageBubble(
       'assistant',
-      "Welcome! I am **Hermes**, your local open-source intelligence running inside your workspace. If you send me questions, I will try to answer directly from my local endpoint. However, if my endpoint is offline, lagging, or outputting invalid data formats, the request router will automatically fallback to **OpenAI** seamlessly in real-time.\n\nTry sending a message! You can use the **Simulator Panel** on the right to manually mock latency and offline parameters to see how I recover.",
+      "Welcome! I am **Hermes Agent (Ollama + Qwen3)**, your local open-source agent running on your remote device (Jacks-Mac-Studio.local) and connected via the **Local Router**. If you send me questions, I will try to answer directly from my local Ollama endpoint. However, if my endpoint is offline, lagging, or outputting invalid data formats, the request router will automatically fallback to **OpenAI** seamlessly in real-time.\n\nTry sending a message! You can use the **Simulator Panel** on the right to manually mock latency and offline parameters to see how I recover.",
       'local',
       0,
       false
@@ -326,9 +357,9 @@ class AppController {
     const metadata = document.createElement('div');
     metadata.className = 'msg-metadata';
     
-    const roleLabel = role === 'user' ? 'You' : (sourceModel === 'local' ? `Local Hermes (${this.config.localModel})` : `OpenAI (${this.config.openaiModel})`);
+    const roleLabel = role === 'user' ? 'You' : (sourceModel === 'local' ? `Hermes (${this.config.localModel})` : `OpenAI (${this.config.openaiModel})`);
     const tagClass = role === 'user' ? 'tag-user' : (sourceModel === 'local' ? 'tag-local' : 'tag-openai');
-    const tagLabel = role === 'user' ? 'User' : (sourceModel === 'local' ? 'Local' : 'Fallback');
+    const tagLabel = role === 'user' ? 'User' : (sourceModel === 'local' ? 'Ollama' : 'Fallback');
 
     metadata.innerHTML = `
       <span>${roleLabel}</span>
@@ -563,7 +594,7 @@ class AppController {
     const timeoutId = setTimeout(() => localController.abort(), timeoutLimitMs);
 
     try {
-      // Build fetch request to Ollama endpoint (OpenAI compatible endpoint /chat/completions)
+      // Build fetch request to LM Studio endpoint (OpenAI compatible endpoint /chat/completions)
       const fetchUrl = `${this.config.localUrl}/chat/completions`;
       const response = await fetch(fetchUrl, {
         method: 'POST',
@@ -611,7 +642,7 @@ class AppController {
         errorMessage = `Local request timed out after exceeding ${this.config.timeoutSeconds}s threshold.`;
       }
 
-      this.addSystemNotification(`Router Failover: Connection to local model failed or aborted (${errorMessage}). Launching fallback sequence to OpenAI...`);
+      this.addSystemNotification(`Router Failover: Connection to local Ollama failed or aborted (${errorMessage}). Launching fallback sequence to OpenAI...`);
       
       // Calculate local latency up to fail
       const elapsed = Math.round(performance.now() - startLocal);
@@ -785,6 +816,75 @@ class AppController {
   // Sleep utility helper
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Tab switching logic
+  switchTab(tabName) {
+    if (tabName === 'analytics') {
+      this.dom.btnTabAnalytics.classList.add('active');
+      this.dom.btnTabSetup.classList.remove('active');
+      this.dom.contentAnalytics.classList.add('active');
+      this.dom.contentSetup.classList.remove('active');
+    } else if (tabName === 'setup') {
+      this.dom.btnTabAnalytics.classList.remove('active');
+      this.dom.btnTabSetup.classList.add('active');
+      this.dom.contentAnalytics.classList.remove('active');
+      this.dom.contentSetup.classList.add('active');
+    }
+  }
+
+  // Copy text to clipboard with micro-animations
+  copyToClipboard(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const originalHTML = btn.innerHTML;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.classList.remove('copied');
+      }, 1500);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
+  }
+
+  // Load persistent checklist completion state from LocalStorage
+  loadChecklistState() {
+    const checklistBtns = document.querySelectorAll('.step-checkbox-btn');
+    checklistBtns.forEach(btn => {
+      const stepNum = btn.getAttribute('data-step');
+      const completed = localStorage.getItem(`hermes_step_${stepNum}`) === 'true';
+      this.updateChecklistUI(stepNum, completed);
+    });
+  }
+
+  // Toggle step state in checklist
+  toggleChecklistStep(stepNum) {
+    const completed = localStorage.getItem(`hermes_step_${stepNum}`) === 'true';
+    const newState = !completed;
+    localStorage.setItem(`hermes_step_${stepNum}`, newState ? 'true' : 'false');
+    this.updateChecklistUI(stepNum, newState);
+  }
+
+  // Synchronize checklist step styling UI
+  updateChecklistUI(stepNum, completed) {
+    const btn = document.querySelector(`.step-checkbox-btn[data-step="${stepNum}"]`);
+    const stepContainer = document.getElementById(`setup-step-${stepNum}`);
+    if (!btn) return;
+
+    if (completed) {
+      btn.innerHTML = '<span class="checkbox-icon">✅</span> Done';
+      btn.classList.add('completed');
+      if (stepContainer) {
+        stepContainer.classList.add('completed');
+      }
+    } else {
+      btn.innerHTML = '<span class="checkbox-icon">⬜</span> Mark Done';
+      btn.classList.remove('completed');
+      if (stepContainer) {
+        stepContainer.classList.remove('completed');
+      }
+    }
   }
 }
 
