@@ -102,6 +102,7 @@ class AppController {
       // Simulation Knobs
       simOffline: document.getElementById('sim-offline'),
       simFormatError: document.getElementById('sim-format-error'),
+      simBlockOpenai: document.getElementById('sim-block-openai'),
       simLatency: document.getElementById('sim-latency'),
       valSimLatency: document.getElementById('val-sim-latency'),
       
@@ -200,6 +201,10 @@ class AppController {
     this.dom.simOffline.addEventListener('change', () => {
       this.updateHUDDisplay();
     });
+
+    this.dom.simBlockOpenai.addEventListener('change', () => {
+      this.updateHUDDisplay();
+    });
   }
 
   // Toggle between simulated and actual backend
@@ -289,7 +294,10 @@ class AppController {
     }
 
     // Fallback status badge
-    if (this.metrics.fallbackCount > 0) {
+    if (this.dom.simBlockOpenai.checked) {
+      this.dom.badgeOpenaiStatus.textContent = "Blocked (Policy)";
+      this.dom.badgeOpenaiStatus.className = "hud-badge offline";
+    } else if (this.metrics.fallbackCount > 0) {
       this.dom.badgeOpenaiStatus.textContent = `Active (${this.metrics.fallbackCount} fails)`;
       this.dom.badgeOpenaiStatus.className = "hud-badge warning";
     } else {
@@ -320,7 +328,11 @@ class AppController {
     this.renderCostEfficiencyDashboard();
     
     // Update Input Area Label
-    this.dom.inputHelperText.textContent = `Primary: ${this.config.localModel} (${this.isSimulation ? 'Sim' : 'Ollama'}) | Failover: ${this.config.openaiModel}`;
+    if (this.dom.simBlockOpenai.checked) {
+      this.dom.inputHelperText.textContent = `Primary: ${this.config.localModel} (${this.isSimulation ? 'Sim' : 'Ollama'}) | Failover: BLOCKED (OpenAI Fallback Disabled)`;
+    } else {
+      this.dom.inputHelperText.textContent = `Primary: ${this.config.localModel} (${this.isSimulation ? 'Sim' : 'Ollama'}) | Failover: ${this.config.openaiModel}`;
+    }
   }
 
   // Appends initial welcome message to chat
@@ -470,6 +482,7 @@ class AppController {
     const start = performance.now();
     const isOffline = this.dom.simOffline.checked;
     const isFormatError = this.dom.simFormatError.checked;
+    const isBlockOpenai = this.dom.simBlockOpenai.checked;
     const injectedLatency = parseInt(this.dom.simLatency.value, 10);
     const timeoutThreshold = this.config.timeoutSeconds * 1000;
 
@@ -488,18 +501,25 @@ class AppController {
     if (isOffline) {
       await this.sleep(400); // Fast fail connection try
       typingEl.remove();
-      this.addSystemNotification("Failover Alert: Local LLM is offline. Redirecting request to OpenAI fallback endpoint...");
       
-      const openaiStart = performance.now();
-      const typingFallback = this.renderTypingIndicator();
-      await this.sleep(1200); // Simulate OpenAI query time
-      typingFallback.remove();
-      
-      const openaiLatency = Math.round(performance.now() - openaiStart);
-      const mockReply = this.mockDatabase[category].openai;
-      
-      this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
-      this.logMetrics(0, openaiLatency, true);
+      if (isBlockOpenai) {
+        this.addSystemNotification("Routing Intercepted: Local LLM is offline. Fallback to OpenAI is BLOCKED by active policy.", 'error');
+        this.renderMessageBubble('assistant', "⚠️ **ROUTING ERROR: Local Host Offline**\n\nThe local model is currently offline or unreachable. An outbound fallback request to OpenAI was attempted, but it has been strictly **blocked** by your active local-only isolation policy. No external network request was sent.", 'local', 0, false);
+        this.logMetrics(0, 0, false, true);
+      } else {
+        this.addSystemNotification("Failover Alert: Local LLM is offline. Redirecting request to OpenAI fallback endpoint...");
+        
+        const openaiStart = performance.now();
+        const typingFallback = this.renderTypingIndicator();
+        await this.sleep(1200); // Simulate OpenAI query time
+        typingFallback.remove();
+        
+        const openaiLatency = Math.round(performance.now() - openaiStart);
+        const mockReply = this.mockDatabase[category].openai;
+        
+        this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
+        this.logMetrics(0, openaiLatency, true);
+      }
       return;
     }
 
@@ -510,18 +530,25 @@ class AppController {
       if (injectedLatency >= timeoutThreshold) {
         await this.sleep(timeoutThreshold);
         typingEl.remove();
-        this.addSystemNotification(`Abort Event: Local LLM exceeded timeout threshold of ${this.config.timeoutSeconds}s. Cancelling request and routing to OpenAI fallback...`);
         
-        const openaiStart = performance.now();
-        const typingFallback = this.renderTypingIndicator();
-        await this.sleep(1100);
-        typingFallback.remove();
-        
-        const openaiLatency = Math.round(performance.now() - openaiStart);
-        const mockReply = this.mockDatabase[category].openai;
-        
-        this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
-        this.logMetrics(timeoutThreshold, openaiLatency, true);
+        if (isBlockOpenai) {
+          this.addSystemNotification(`Abort Event: Local LLM exceeded timeout threshold of ${this.config.timeoutSeconds}s. Fallback to OpenAI is BLOCKED by active policy.`, 'error');
+          this.renderMessageBubble('assistant', `⚠️ **ROUTING ERROR: Connection Timeout**\n\nThe local request timed out after exceeding the ${this.config.timeoutSeconds}s threshold. Fallback to OpenAI was **blocked** by your active local-only isolation policy.`, 'local', timeoutThreshold, false);
+          this.logMetrics(timeoutThreshold, 0, false, true);
+        } else {
+          this.addSystemNotification(`Abort Event: Local LLM exceeded timeout threshold of ${this.config.timeoutSeconds}s. Cancelling request and routing to OpenAI fallback...`);
+          
+          const openaiStart = performance.now();
+          const typingFallback = this.renderTypingIndicator();
+          await this.sleep(1100);
+          typingFallback.remove();
+          
+          const openaiLatency = Math.round(performance.now() - openaiStart);
+          const mockReply = this.mockDatabase[category].openai;
+          
+          this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
+          this.logMetrics(timeoutThreshold, openaiLatency, true);
+        }
         return;
       } else {
         await this.sleep(injectedLatency);
@@ -534,18 +561,25 @@ class AppController {
     if (isFormatError) {
       const localLatency = Math.round(performance.now() - localStart);
       typingEl.remove();
-      this.addSystemNotification(`Format Alert: Received output from ${this.config.localModel} but failed custom JSON format checks. Retrying prompt via OpenAI...`);
       
-      const openaiStart = performance.now();
-      const typingFallback = this.renderTypingIndicator();
-      await this.sleep(1300);
-      typingFallback.remove();
-      
-      const openaiLatency = Math.round(performance.now() - openaiStart);
-      const mockReply = this.mockDatabase[category].openai;
-      
-      this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
-      this.logMetrics(localLatency, openaiLatency, true);
+      if (isBlockOpenai) {
+        this.addSystemNotification(`Format Alert: Received output from ${this.config.localModel} but failed custom JSON format checks. Fallback to OpenAI is BLOCKED by active policy.`, 'error');
+        this.renderMessageBubble('assistant', `⚠️ **ROUTING ERROR: Output Format Validation Failure**\n\nReceived response from the local model, but it failed custom JSON validation checks. Fallback to OpenAI was **blocked** by your active local-only isolation policy.\n\n**Raw Local Output:**\n{\n  "error": "Failed to parse structured response from local agent."\n}`, 'local', localLatency, false);
+        this.logMetrics(localLatency, 0, false, true);
+      } else {
+        this.addSystemNotification(`Format Alert: Received output from ${this.config.localModel} but failed custom JSON format checks. Retrying prompt via OpenAI...`);
+        
+        const openaiStart = performance.now();
+        const typingFallback = this.renderTypingIndicator();
+        await this.sleep(1300);
+        typingFallback.remove();
+        
+        const openaiLatency = Math.round(performance.now() - openaiStart);
+        const mockReply = this.mockDatabase[category].openai;
+        
+        this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
+        this.logMetrics(localLatency, openaiLatency, true);
+      }
       return;
     }
 
@@ -563,6 +597,7 @@ class AppController {
   async executeLiveRouting(prompt, typingEl) {
     const isOffline = this.dom.simOffline.checked;
     const isFormatError = this.dom.simFormatError.checked;
+    const isBlockOpenai = this.dom.simBlockOpenai.checked;
     const injectedLatency = parseInt(this.dom.simLatency.value, 10);
     const timeoutLimitMs = this.config.timeoutSeconds * 1000;
 
@@ -574,16 +609,28 @@ class AppController {
     // Mock Offline toggle even in live connection mode for testing simulation controls
     if (isOffline) {
       typingEl.remove();
-      this.addSystemNotification(`Failover Alert (Simulated): Direct Ollama routing disabled. Falling back to OpenAI...`);
-      await this.fetchOpenAiFallback(prompt);
+      if (isBlockOpenai) {
+        this.addSystemNotification(`Failover Alert (Simulated): Direct Ollama routing disabled. Fallback to OpenAI is BLOCKED by active policy.`, 'error');
+        this.renderMessageBubble('assistant', "⚠️ **ROUTING ERROR: Local Host Offline**\n\nThe local model is currently offline or unreachable. An outbound fallback request to OpenAI was attempted, but it has been strictly **blocked** by your active local-only isolation policy. No external network request was sent.", 'local', 0, false);
+        this.logMetrics(0, 0, false, true);
+      } else {
+        this.addSystemNotification(`Failover Alert (Simulated): Direct Ollama routing disabled. Falling back to OpenAI...`);
+        await this.fetchOpenAiFallback(prompt);
+      }
       return;
     }
 
     // If local latency slider exceeded timeout threshold
     if (injectedLatency >= timeoutLimitMs) {
       typingEl.remove();
-      this.addSystemNotification(`Timeout Alert (Simulated): Injected delay surpassed local timeout limit. Falling back to OpenAI...`);
-      await this.fetchOpenAiFallback(prompt);
+      if (isBlockOpenai) {
+        this.addSystemNotification(`Timeout Alert (Simulated): Injected delay surpassed local timeout limit. Fallback to OpenAI is BLOCKED by active policy.`, 'error');
+        this.renderMessageBubble('assistant', `⚠️ **ROUTING ERROR: Connection Timeout**\n\nThe local request timed out after exceeding the ${this.config.timeoutSeconds}s threshold. Fallback to OpenAI was **blocked** by your active local-only isolation policy.`, 'local', timeoutLimitMs, false);
+        this.logMetrics(timeoutLimitMs, 0, false, true);
+      } else {
+        this.addSystemNotification(`Timeout Alert (Simulated): Injected delay surpassed local timeout limit. Falling back to OpenAI...`);
+        await this.fetchOpenAiFallback(prompt);
+      }
       return;
     }
 
@@ -622,9 +669,15 @@ class AppController {
       // Check simulated parsing error on output
       if (isFormatError) {
         typingEl.remove();
-        this.addSystemNotification(`Validation Alert: Local model completed request in ${localLatency}ms, but output failed JSON validation checks. Redirecting to OpenAI...`);
-        this.logMetrics(localLatency, 0, true); // Log fail for metric
-        await this.fetchOpenAiFallback(prompt);
+        if (isBlockOpenai) {
+          this.addSystemNotification(`Validation Alert: Local model completed request in ${localLatency}ms, but output failed JSON validation checks. Fallback to OpenAI is BLOCKED by active policy.`, 'error');
+          this.renderMessageBubble('assistant', `⚠️ **ROUTING ERROR: Output Format Validation Failure**\n\nReceived response from the local model, but it failed custom JSON validation checks. Fallback to OpenAI was **blocked** by your active local-only isolation policy.\n\n**Raw Local Output:**\n{\n  "error": "Failed to parse structured response from local agent."\n}`, 'local', localLatency, false);
+          this.logMetrics(localLatency, 0, false, true);
+        } else {
+          this.addSystemNotification(`Validation Alert: Local model completed request in ${localLatency}ms, but output failed JSON validation checks. Redirecting to OpenAI...`);
+          this.logMetrics(localLatency, 0, true); // Log fail for metric
+          await this.fetchOpenAiFallback(prompt);
+        }
         return;
       }
 
@@ -642,11 +695,16 @@ class AppController {
         errorMessage = `Local request timed out after exceeding ${this.config.timeoutSeconds}s threshold.`;
       }
 
-      this.addSystemNotification(`Router Failover: Connection to local Ollama failed or aborted (${errorMessage}). Launching fallback sequence to OpenAI...`);
-      
-      // Calculate local latency up to fail
       const elapsed = Math.round(performance.now() - startLocal);
-      await this.fetchOpenAiFallback(prompt, elapsed);
+
+      if (isBlockOpenai) {
+        this.addSystemNotification(`Router Failover Intercepted: Connection to local Ollama failed or aborted (${errorMessage}). Fallback to OpenAI is BLOCKED by active policy.`, 'error');
+        this.renderMessageBubble('assistant', `⚠️ **ROUTING ERROR: Connection Failed**\n\nThe local request failed or was aborted: *${errorMessage}*. Fallback to OpenAI was **blocked** by your active local-only isolation policy.`, 'local', elapsed, false);
+        this.logMetrics(elapsed, 0, false, true);
+      } else {
+        this.addSystemNotification(`Router Failover: Connection to local Ollama failed or aborted (${errorMessage}). Launching fallback sequence to OpenAI...`);
+        await this.fetchOpenAiFallback(prompt, elapsed);
+      }
     }
   }
 
@@ -698,14 +756,15 @@ class AppController {
   // -------------------------------------------------------------
   // ANALYTICS & LOGGING SYSTEM
   // -------------------------------------------------------------
-  logMetrics(localLatency, openaiLatency, isFallback) {
+  logMetrics(localLatency, openaiLatency, isFallback, isBlocked = false) {
     const flatRateOpenAi = this.pricing[this.config.openaiModel]?.flatCost || 0.002;
     
     // Keep record in latency logs (max 10 points for nice layout charting)
     this.metrics.latencyHistory.push({
       local: localLatency,
       openai: openaiLatency,
-      isFallback: isFallback
+      isFallback: isFallback,
+      isBlocked: isBlocked
     });
 
     if (this.metrics.latencyHistory.length > 10) {
@@ -713,7 +772,12 @@ class AppController {
     }
 
     // Cost saving updates
-    if (isFallback) {
+    if (isBlocked) {
+      // Avoid incrementing standard local chat successes or fallback counts.
+      // But increment pureOpenAiCost and totalSavedDollars, showing cost savings (as we avoided calling paid OpenAI).
+      this.metrics.pureOpenAiCost += flatRateOpenAi;
+      this.metrics.totalSavedDollars += flatRateOpenAi;
+    } else if (isFallback) {
       this.metrics.fallbackCount++;
       // We had to call OpenAI, so we pay flat cost
       this.metrics.hybridRouterCost += flatRateOpenAi;

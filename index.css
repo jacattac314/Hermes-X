@@ -673,6 +673,22 @@ input:checked + .slider:before {
   background-color: var(--color-local);
 }
 
+.switch-block input:checked + .slider {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.25);
+}
+
+.switch-block input:checked + .slider:before {
+  background-color: rgb(239, 68, 68);
+}
+
+.sim-switch-box:has(#sim-block-openai:checked) {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+}
+
 /* Latency Slider container inside switchbox */
 .slider-container {
   margin-top: 4px;

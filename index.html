@@ -153,6 +153,18 @@
                 <p class="sim-switch-desc">Simulates structural syntax failures in JSON outputs, forcing retry via OpenAI.</p>
               </div>
 
+              <!-- Block OpenAI fallback switch -->
+              <div class="sim-switch-box" style="grid-column: span 2;" id="box-sim-block">
+                <div class="sim-switch-header">
+                  <span class="sim-switch-label" style="color: #ef4444; font-weight: 600;">🔒 Block OpenAI Fallback</span>
+                  <label class="switch switch-block">
+                    <input type="checkbox" id="sim-block-openai">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <p class="sim-switch-desc">Forces local-only isolation policy. Completely blocks routing or fallback to OpenAI even if local goes offline or fails validation checks.</p>
+              </div>
+
               <!-- Latency adjuster slider -->
               <div class="sim-switch-box" style="grid-column: span 2;">
                 <div class="sim-switch-header">
