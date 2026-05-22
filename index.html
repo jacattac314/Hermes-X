@@ -604,6 +604,143 @@
     </div>
   </div>
 
+  <!-- Live Browser Viewport Simulator Modal -->
+  <div class="browser-overlay" id="browser-overlay">
+    <div class="browser-window glass-panel">
+      <!-- Window Title & Controls Bar -->
+      <div class="browser-header">
+        <div class="browser-controls">
+          <span class="browser-dot red-dot" id="btn-close-browser"></span>
+          <span class="browser-dot yellow-dot"></span>
+          <span class="browser-dot green-dot"></span>
+        </div>
+        
+        <div class="browser-tabs">
+          <div class="browser-tab active" id="browser-tab-title">
+            <span class="tab-favicon">🌐</span>
+            <span class="tab-name" id="browser-tab-text">New Tab</span>
+            <span class="tab-close">×</span>
+          </div>
+        </div>
+
+        <div class="browser-header-spacer"></div>
+      </div>
+
+      <!-- Address / Navigation Bar -->
+      <div class="browser-nav-bar">
+        <div class="browser-nav-arrows">
+          <span class="nav-arrow disabled">←</span>
+          <span class="nav-arrow disabled">→</span>
+          <span class="nav-arrow">⟳</span>
+        </div>
+        
+        <div class="browser-address-container">
+          <span class="address-lock" id="address-lock-icon">🔒</span>
+          <span class="address-prefix" id="address-prefix-text">https://</span>
+          <input type="text" class="browser-address-input" id="browser-url-input" value="about:blank" readonly>
+        </div>
+
+        <div class="browser-extensions">
+          <span class="ext-icon">🧩</span>
+          <span class="ext-icon">👤</span>
+          <span class="ext-icon">⋮</span>
+        </div>
+      </div>
+
+      <!-- Main Browser Viewport Content -->
+      <div class="browser-viewport">
+        <!-- Interactive loading & connecting log screen -->
+        <div class="browser-loading-screen" id="browser-loading-screen">
+          <div class="spinner"></div>
+          <h3 class="loading-status" id="browser-loading-status">Spawning isolated browser...</h3>
+          <div class="browser-logs" id="browser-connection-logs">
+            <!-- Simulated logs populate dynamically -->
+          </div>
+        </div>
+
+        <!-- Render Target Frame Mock -->
+        <div class="browser-content-frame" id="browser-content-frame">
+          <!-- Gemini Mockup (Hidden by default) -->
+          <div class="mock-gemini-container" id="mock-gemini-view">
+            <!-- Sidebar -->
+            <div class="gemini-sidebar">
+              <div class="gemini-new-chat">+ New chat</div>
+              <div class="gemini-recent-title">Recent</div>
+              <div class="gemini-recent-item">📁 Local Workspace Scan</div>
+              <div class="gemini-recent-item">📊 Performance Optimizer</div>
+              <div class="gemini-recent-item">🔒 Offline Privacy Shield</div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="gemini-main">
+              <div class="gemini-header">
+                <span class="gemini-logo-text">Gemini 1.5 Pro</span>
+                <span class="gemini-user-avatar">👤</span>
+              </div>
+              
+              <div class="gemini-hero">
+                <h1 class="gemini-greeting">Hello, Jack</h1>
+                <h2 class="gemini-subgreeting">How can I help you today?</h2>
+              </div>
+              
+              <div class="gemini-cards">
+                <div class="gemini-card">
+                  <p>Write a script to automate my local folders</p>
+                  <span>✏️ Coding</span>
+                </div>
+                <div class="gemini-card">
+                  <p>Explain the benefits of running Ollama offline</p>
+                  <span>🧠 Privacy</span>
+                </div>
+                <div class="gemini-card">
+                  <p>Create a workflow utilizing Nous Hermes</p>
+                  <span>🚀 Agentic</span>
+                </div>
+              </div>
+
+              <!-- Selection/Automation Target Indicator Overlay (Pulsing highlight outline) -->
+              <div class="browser-highlight-overlay" id="browser-highlight-overlay">
+                <div class="highlight-label" id="browser-highlight-label">Locating Input Field...</div>
+              </div>
+
+              <div class="gemini-input-container">
+                <div class="gemini-input-box">
+                  <span class="gemini-input-text" id="gemini-typed-input">Ask Gemini...</span>
+                  <span class="gemini-cursor" id="gemini-typing-cursor">|</span>
+                  <div class="gemini-input-actions">
+                    <span>🎙️</span>
+                    <span>🖼️</span>
+                    <span>➔</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- General Web View (Fallback/Mock) -->
+          <div class="mock-general-container" id="mock-general-view">
+            <div class="general-web-header">
+              <h1 id="general-web-title">Search Results</h1>
+            </div>
+            <div class="general-web-body" id="general-web-body-content">
+              <div class="search-result-item">
+                <h3>Ollama - Get up and running with large language models locally.</h3>
+                <a href="#">https://ollama.com</a>
+                <p>Ollama lets you run open-source large language models, like Llama 3, Qwen, and Mistral, locally. Set up and run models on macOS, Linux, and Windows...</p>
+              </div>
+              <div class="search-result-item">
+                <h3>Nous Research - Creators of Hermes</h3>
+                <a href="#">https://nousresearch.com</a>
+                <p>Nous Research is an independent research collective focusing on open-source machine learning, reasoning LLMs, agent architectures, and dataset creation.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
