@@ -9,11 +9,17 @@ class AppController {
     // 1. Core Config & Default Parameters
     this.config = {
       openaiKey: localStorage.getItem('lmlink_openai_key') || '',
-      localUrl: localStorage.getItem('lmlink_local_url') || 'http://127.0.0.1:11434/v1',
+      localUrl: localStorage.getItem('lmlink_local_url') || 'http://127.0.0.1:8000/v1',
       localModel: localStorage.getItem('lmlink_local_model') || 'qwen3:32b',
       openaiModel: localStorage.getItem('lmlink_openai_model') || 'gpt-4o-mini',
       timeoutSeconds: parseInt(localStorage.getItem('lmlink_timeout') || '5', 10)
     };
+
+    // Migrate legacy local URL to the real agent proxy port
+    if (this.config.localUrl.includes('11434')) {
+      this.config.localUrl = 'http://127.0.0.1:8000/v1';
+      localStorage.setItem('lmlink_local_url', this.config.localUrl);
+    }
 
     // 2. Operational state parameters
     this.isSimulation = true;
@@ -263,7 +269,7 @@ class AppController {
   // Save Settings Modal inputs to localStorage
   saveSettings() {
     this.config.openaiKey = this.dom.settingsOpenaiKey.value.trim();
-    this.config.localUrl = this.dom.settingsLocalUrl.value.trim() || 'http://127.0.0.1:11434/v1';
+    this.config.localUrl = this.dom.settingsLocalUrl.value.trim() || 'http://127.0.0.1:8000/v1';
     this.config.localModel = this.dom.settingsLocalModel.value.trim() || 'qwen3:32b';
     this.config.openaiModel = this.dom.settingsOpenaiModel.value;
     this.config.timeoutSeconds = parseInt(this.dom.settingsTimeout.value, 10) || 5;

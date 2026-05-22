@@ -31,6 +31,63 @@ def strip_tags(html):
         return re.sub(r'<[^>]*>', '', html)
 
 class CustomHandler(http.server.SimpleHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.end_headers()
+
+    def do_POST(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        
+        if path in ['/v1/chat/completions', '/chat/completions']:
+            self.handle_chat_completions()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def handle_chat_completions(self):
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            request_data = json.loads(post_data.decode('utf-8'))
+            
+            messages = request_data.get('messages', [])
+            prompt = messages[-1]['content'] if messages else ""
+            
+            # Execute the real hermes CLI
+            import subprocess
+            process = subprocess.Popen(
+                ["/Users/jack/.local/bin/hermes", "-z", prompt],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            stdout, stderr = process.communicate()
+            
+            response_text = stdout.strip()
+            if not response_text:
+                if stderr.strip():
+                    response_text = f"An error occurred while running the local Hermes CLI:\n{stderr.strip()}"
+                else:
+                    response_text = "The local Hermes CLI did not return any response."
+                    
+            openai_response = {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": response_text
+                        }
+                    }
+                ]
+            }
+            self.send_json(openai_response)
+        except Exception as e:
+            self.send_json({"error": str(e)}, 500)
+
     def do_GET(self):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
