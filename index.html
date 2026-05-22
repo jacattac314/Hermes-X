@@ -284,7 +284,7 @@
           <!-- Setup Guide Checklist and Details -->
           <div class="setup-guide-card glass-panel">
             <h2 class="sim-section-title" style="margin-bottom: 0.5rem;">🛠️ Local-Only Installation Guide</h2>
-            <p class="sim-switch-desc" style="margin-bottom: 0.75rem;">Follow these 6 steps to configure a fully sandboxed, highly-capable local environment on your Mac.</p>
+            <p class="sim-switch-desc" style="margin-bottom: 0.75rem;">Follow these 7 steps to configure a fully sandboxed, highly-capable local environment on your Mac.</p>
 
             <div class="setup-steps">
               
@@ -493,6 +493,44 @@
                   <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">hermes gateway run</span></div>
                 </div>
                 <a href="http://localhost:8642" target="_blank" class="link-btn">🌐 Open Local Gateway (localhost:8642)</a>
+              </div>
+
+              <!-- Step 7 -->
+              <div class="setup-step" id="setup-step-7">
+                <div class="step-header">
+                  <div class="step-title-box">
+                    <span class="step-number">7</span>
+                    <span class="step-title">Enable Real-Time Browser Control</span>
+                  </div>
+                  <div class="step-checkbox-btn" data-step="7">
+                    <span class="checkbox-icon">⬜</span> Mark Done
+                  </div>
+                </div>
+                <p class="step-desc">Let Hermes control and interact with your <em>actual, visible</em> Google Chrome browser window on your Mac using Chrome DevTools Protocol (CDP).</p>
+                <div class="terminal-box">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - launch chrome</span>
+                    <button class="terminal-btn-copy" data-copy="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir=&quot;/Users/jack/.hermes/hermes2-chrome-profile&quot;">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">$</span> <span class="terminal-command">/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir="/Users/jack/.hermes/hermes2-chrome-profile"</span></div>
+                </div>
+                <div class="terminal-box" style="margin-top: 8px;">
+                  <div class="terminal-header">
+                    <div class="terminal-dots">
+                      <div class="terminal-dot red"></div>
+                      <div class="terminal-dot yellow"></div>
+                      <div class="terminal-dot green"></div>
+                    </div>
+                    <span>Terminal - connect hermes</span>
+                    <button class="terminal-btn-copy" data-copy="/browser connect">Copy</button>
+                  </div>
+                  <div class="terminal-body"><span class="terminal-prompt">&gt;</span> <span class="terminal-command">/browser connect</span> <span class="terminal-comment"># Type this in active Hermes chat or TUI</span></div>
+                </div>
               </div>
 
             </div>
