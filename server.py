@@ -55,7 +55,37 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             request_data = json.loads(post_data.decode('utf-8'))
             
             messages = request_data.get('messages', [])
-            prompt = messages[-1]['content'] if messages else ""
+            
+            # Construct a context-aware prompt if there is history
+            if len(messages) > 1:
+                formatted_history = []
+                for msg in messages[:-1]:
+                    role = "User" if msg['role'] == 'user' else "Assistant"
+                    # Exclude very long system context dumps from the history if present
+                    content = msg['content']
+                    if "[System Scraped Context:" in content:
+                        parts = content.split("User request:")
+                        if len(parts) > 1:
+                            content = parts[-1].strip()
+                    formatted_history.append(f"[{role}]: {content}")
+                
+                history_text = "\n".join(formatted_history)
+                current_user_prompt = messages[-1]['content']
+                
+                prompt = (
+                    f"You are Hermes, a helpful local AI agent running on the user's Mac. "
+                    f"Here is our ongoing conversation history for context:\n"
+                    f"{history_text}\n\n"
+                    f"Latest User Request:\n"
+                    f"{current_user_prompt}\n\n"
+                    f"Please address the latest user request. You have full access to your local tools, "
+                    f"including web browsing, shell commands, and local computations. Run any tools "
+                    f"necessary to fulfill the request. Return only your direct, final response to the user."
+                )
+            else:
+                prompt = messages[-1]['content'] if messages else ""
+            
+            print(f"Routing request to real local hermes agent CLI. Prompt length: {len(prompt)}")
             
             # Execute the real hermes CLI
             import subprocess
@@ -73,6 +103,8 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                     response_text = f"An error occurred while running the local Hermes CLI:\n{stderr.strip()}"
                 else:
                     response_text = "The local Hermes CLI did not return any response."
+            
+            print(f"Local hermes CLI execution finished. Response length: {len(response_text)}")
                     
             openai_response = {
                 "choices": [
@@ -86,6 +118,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             }
             self.send_json(openai_response)
         except Exception as e:
+            print(f"Error handling chat completions: {e}")
             self.send_json({"error": str(e)}, 500)
 
     def do_GET(self):

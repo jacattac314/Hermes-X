@@ -495,7 +495,7 @@ class AppController {
       const lower = prompt.toLowerCase();
       const isBrowserPrompt = lower.includes('browser') || lower.includes('chrome') || lower.includes('search') || lower.includes('website') || lower.includes('browse') || lower.includes('go to');
 
-      if (isBrowserPrompt) {
+      if (this.isSimulation && isBrowserPrompt) {
         // Trigger visual browser automation viewport animation first!
         await this.triggerBrowserSimulation(prompt);
       }
@@ -1115,7 +1115,11 @@ Let me know how you would like to proceed!`;
     const isFormatError = this.dom.simFormatError.checked;
     const isBlockOpenai = this.dom.simBlockOpenai.checked;
     const injectedLatency = parseInt(this.dom.simLatency.value, 10);
-    const timeoutLimitMs = this.config.timeoutSeconds * 1000;
+    
+    // Scale timeout dynamically to 60s for real browser scraping sessions
+    const lower = prompt.toLowerCase();
+    const isBrowserPrompt = lower.includes('browser') || lower.includes('chrome') || lower.includes('search') || lower.includes('website') || lower.includes('browse') || lower.includes('go to');
+    const timeoutLimitMs = isBrowserPrompt ? 60000 : (this.config.timeoutSeconds * 1000);
 
     // Simulate custom local latency if slider is active in Live mode
     if (injectedLatency > 0) {
