@@ -506,7 +506,7 @@ Running fully sandboxed on your local hardware, no external computing APIs were 
     }
 
     // 2. System Date / Time
-    if (lower.includes('date') || lower.includes('time') || lower.includes('today') || lower.includes('now')) {
+    if (lower.includes('date') || lower.includes('time') || lower.includes('today') || lower.includes('now') || lower.includes('day')) {
       const now = new Date();
       const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -584,7 +584,7 @@ I processed this query immediately on our remote cloud infrastructure.`;
     }
 
     // 2. System Date / Time
-    if (lower.includes('date') || lower.includes('time') || lower.includes('today') || lower.includes('now')) {
+    if (lower.includes('date') || lower.includes('time') || lower.includes('today') || lower.includes('now') || lower.includes('day')) {
       const now = new Date();
       const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
