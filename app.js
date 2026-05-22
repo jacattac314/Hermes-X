@@ -385,6 +385,11 @@ class AppController {
     wrapper.appendChild(metadata);
     wrapper.appendChild(bubble);
 
+    // Append to message history if it's from the assistant and is NOT a routing error
+    if (role === 'assistant' && !text.startsWith('⚠️')) {
+      this.messageHistory.push({ role: 'assistant', content: text });
+    }
+
     // Latency details at bottom of assistant responses
     if (role === 'assistant' && latency > 0) {
       const stats = document.createElement('div');
@@ -475,6 +480,157 @@ class AppController {
     }
   }
 
+  // Dynamic high-fidelity simulated response generator for Local model
+  generateMockResponse(prompt) {
+    const lower = prompt.toLowerCase();
+    
+    // 1. Math / Computation
+    const cleanPrompt = prompt.replace(/x/gi, '*').replace(/times/gi, '*').replace(/plus/gi, '+').replace(/minus/gi, '-').replace(/divided\s+by/gi, '/');
+    const mathMatch = cleanPrompt.match(/(\d+(?:\.\d+)?)\s*([\+\-\*\/])\s*(\d+(?:\.\d+)?)/);
+    if (mathMatch) {
+      const num1 = parseFloat(mathMatch[1]);
+      const op = mathMatch[2];
+      const num2 = parseFloat(mathMatch[3]);
+      let result;
+      switch(op) {
+        case '+': result = num1 + num2; break;
+        case '-': result = num1 - num2; break;
+        case '*': result = num1 * num2; break;
+        case '/': result = num2 !== 0 ? num1 / num2 : 'undefined (cannot divide by zero)'; break;
+      }
+      return `Calculated locally using my secure math processing module:
+
+$$\n${num1} ${op} ${num2} = ${result}\n$$
+
+Running fully sandboxed on your local hardware, no external computing APIs were reached.`;
+    }
+
+    // 2. System Date / Time
+    if (lower.includes('date') || lower.includes('time') || lower.includes('today') || lower.includes('now')) {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `Today's date is **${dateStr}**. The current local system time is **${timeStr}**.
+
+Running fully offline, my clock is synchronized directly with **Jacks-Mac-Studio.local**'s hardware clock.`;
+    }
+
+    // 3. Context / History referencing
+    if (lower.includes('history') || lower.includes('previous') || lower.includes('last message') || lower.includes('what did i') || lower.includes('remember')) {
+      const userTurns = this.messageHistory.filter(m => m.role === 'user');
+      if (userTurns.length > 1) {
+        const prevPrompt = userTurns[userTurns.length - 2].content;
+        return `Checking our conversation history context... In your previous turn, you asked: *"${prevPrompt}"*.
+
+We have currently engaged in a total of **${this.messageHistory.length} turns** during this active session. Because I maintain full session context in local memory, all previous turns remain active in my memory window!`;
+      } else {
+        return `I am currently maintaining our active conversation history, but this is your very first query in this session! As we continue chatting, I will preserve every single turn in my context window.`;
+      }
+    }
+
+    // 4. Capability descriptions
+    if (lower.includes('what can you do') || lower.includes('help') || lower.includes('features') || lower.includes('capabilities') || lower.includes('who are you')) {
+      return `As **Hermes Agent (Qwen3:32B)**, I can perform a wide range of tasks fully locally:
+- 🔒 **Privacy-Preserving Conversations**: Discuss confidential matters without cloud monitoring.
+- 🧮 **Local Computations & Logic**: Perform mathematical processing, offline system checks, and local file analysis.
+- 💻 **Code Generation & Review**: Write clean, secure code (Python, JavaScript, etc.) without exposing your IP.
+- 📡 **System Integration Routing**: Sync with your gateway endpoints and coordinate seamless fallback failover triggers.`;
+    }
+
+    // 5. Weather estimations
+    if (lower.includes('weather') || lower.includes('temperature') || lower.includes('forecast')) {
+      return `Checking my offline local environment... Since I have no live internet connection in this sandbox, I estimate the local weather based on standard seasonal metrics: it's likely a pleasant **68°F (20°C)** with clear skies in your area! 
+
+*(Note: Connect me to an external search tool or API plugin for real-time live telemetry).*`;
+    }
+
+    // 6. Generic/default conversation response
+    if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+      return this.mockDatabase.greeting.local;
+    } else if (lower.includes('code') || lower.includes('python') || lower.includes('write')) {
+      return this.mockDatabase.code.local;
+    } else if (lower.includes('slow') || lower.includes('delay') || lower.includes('lag')) {
+      return this.mockDatabase.slow.local;
+    }
+
+    return `That's a fascinating question! I'm reasoning through your request: *"${prompt}"* using my Qwen3 (32B) network. Because you are running me locally via Ollama, we can explore this topic in extreme detail with zero token fees or privacy concerns. 
+
+What specific aspects of this would you like to investigate further?`;
+  }
+
+  // Dynamic high-fidelity simulated response generator for OpenAI Fallback model
+  generateMockOpenaiResponse(prompt) {
+    const lower = prompt.toLowerCase();
+
+    // 1. Math / Computation
+    const cleanPrompt = prompt.replace(/x/gi, '*').replace(/times/gi, '*').replace(/plus/gi, '+').replace(/minus/gi, '-').replace(/divided\s+by/gi, '/');
+    const mathMatch = cleanPrompt.match(/(\d+(?:\.\d+)?)\s*([\+\-\*\/])\s*(\d+(?:\.\d+)?)/);
+    if (mathMatch) {
+      const num1 = parseFloat(mathMatch[1]);
+      const op = mathMatch[2];
+      const num2 = parseFloat(mathMatch[3]);
+      let result;
+      switch(op) {
+        case '+': result = num1 + num2; break;
+        case '-': result = num1 - num2; break;
+        case '*': result = num1 * num2; break;
+        case '/': result = num2 !== 0 ? num1 / num2 : 'undefined (cannot divide by zero)'; break;
+      }
+      return `I am stepping in as a fallback to complete your request. OpenAI Fallback computed:
+
+$$\n${num1} ${op} ${num2} = ${result}\n$$
+
+I processed this query immediately on our remote cloud infrastructure.`;
+    }
+
+    // 2. System Date / Time
+    if (lower.includes('date') || lower.includes('time') || lower.includes('today') || lower.includes('now')) {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `I'm stepping in as a fallback since the local server is unavailable. According to the system request payload, today's date is **${dateStr}** and the current time is **${timeStr}**.`;
+    }
+
+    // 3. Context / History referencing
+    if (lower.includes('history') || lower.includes('previous') || lower.includes('last message') || lower.includes('what did i') || lower.includes('remember')) {
+      const userTurns = this.messageHistory.filter(m => m.role === 'user');
+      if (userTurns.length > 1) {
+        const prevPrompt = userTurns[userTurns.length - 2].content;
+        return `As your OpenAI fallback, I have retrieved our conversation history context from the routing payload. In your previous turn, you asked: *"${prevPrompt}"*. 
+
+I have full access to all **${this.messageHistory.length} turns** in this active session history to maintain continuity.`;
+      } else {
+        return `I am active as your fallback agent and am tracking our active conversation history, but this is your first query in the session!`;
+      }
+    }
+
+    // 4. Capability descriptions
+    if (lower.includes('what can you do') || lower.includes('help') || lower.includes('features') || lower.includes('capabilities') || lower.includes('who are you')) {
+      return `As your **OpenAI Fallback Agent**, I step in when the local host is unreachable or lagging. I can:
+- ⚡ **Full GPT-4o mini Conversational Power**: Provide advanced reasoning, creative writing, and analysis.
+- 🌐 **Always Online Reliability**: Guarantee responses even when local hardware fails.
+- 📂 **Multi-file Coding Support**: Solve complex architectural or debugging problems.`;
+    }
+
+    // 5. Weather estimations
+    if (lower.includes('weather') || lower.includes('temperature') || lower.includes('forecast')) {
+      return `Stepping in as a fallback! While I don't have access to your live real-time GPS sensors, standard meteorological models suggest current conditions are around **65°F (18°C)** with a light breeze. Fallback telemetry successfully verified.`;
+    }
+
+    // 6. Generic/default conversation response
+    if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+      return this.mockDatabase.greeting.openai;
+    } else if (lower.includes('code') || lower.includes('python') || lower.includes('write')) {
+      return this.mockDatabase.code.openai;
+    } else if (lower.includes('slow') || lower.includes('delay') || lower.includes('lag')) {
+      return this.mockDatabase.slow.openai;
+    }
+
+    return `I am processing your query *"${prompt}"* on behalf of your offline local model. Since I am your cloud fallback, I have full reasoning capabilities and can assist you with any advanced details or questions you have. 
+
+Let me know how you would like to proceed!`;
+  }
+
   // -------------------------------------------------------------
   // SIMULATION ROUTING MODE
   // -------------------------------------------------------------
@@ -485,17 +641,6 @@ class AppController {
     const isBlockOpenai = this.dom.simBlockOpenai.checked;
     const injectedLatency = parseInt(this.dom.simLatency.value, 10);
     const timeoutThreshold = this.config.timeoutSeconds * 1000;
-
-    // Determine category based on keywords to match simulated response
-    let category = 'general';
-    const lower = prompt.toLowerCase();
-    if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-      category = 'greeting';
-    } else if (lower.includes('code') || lower.includes('python') || lower.includes('write')) {
-      category = 'code';
-    } else if (lower.includes('slow') || lower.includes('delay') || lower.includes('lag')) {
-      category = 'slow';
-    }
 
     // 1. Check Offline
     if (isOffline) {
@@ -515,7 +660,7 @@ class AppController {
         typingFallback.remove();
         
         const openaiLatency = Math.round(performance.now() - openaiStart);
-        const mockReply = this.mockDatabase[category].openai;
+        const mockReply = this.generateMockOpenaiResponse(prompt);
         
         this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
         this.logMetrics(0, openaiLatency, true);
@@ -544,7 +689,7 @@ class AppController {
           typingFallback.remove();
           
           const openaiLatency = Math.round(performance.now() - openaiStart);
-          const mockReply = this.mockDatabase[category].openai;
+          const mockReply = this.generateMockOpenaiResponse(prompt);
           
           this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
           this.logMetrics(timeoutThreshold, openaiLatency, true);
@@ -575,7 +720,7 @@ class AppController {
         typingFallback.remove();
         
         const openaiLatency = Math.round(performance.now() - openaiStart);
-        const mockReply = this.mockDatabase[category].openai;
+        const mockReply = this.generateMockOpenaiResponse(prompt);
         
         this.renderMessageBubble('assistant', mockReply, 'openai', openaiLatency, true);
         this.logMetrics(localLatency, openaiLatency, true);
@@ -586,7 +731,7 @@ class AppController {
     // 4. Standard successful Local response routing
     typingEl.remove();
     const localLatency = Math.round(performance.now() - localStart);
-    const mockReply = this.mockDatabase[category].local;
+    const mockReply = this.generateMockResponse(prompt);
     this.renderMessageBubble('assistant', mockReply, 'local', localLatency, false);
     this.logMetrics(localLatency, 0, false);
   }
@@ -650,7 +795,7 @@ class AppController {
         },
         body: JSON.stringify({
           model: this.config.localModel,
-          messages: [{ role: 'user', content: prompt }],
+          messages: this.messageHistory,
           stream: false
         }),
         signal: localController.signal
@@ -729,7 +874,7 @@ class AppController {
           model: this.config.openaiModel,
           messages: [
             { role: 'system', content: 'You are an advanced AI assistant performing as a fallback system. The user primary local LLM has failed. Answer their prompt comprehensively, acknowledging that you are stepping in if appropriate.' },
-            { role: 'user', content: prompt }
+            ...this.messageHistory
           ]
         })
       });
